@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+export const dynamic = 'force-dynamic' // Adicione isso aqui!
+
+import { createClient } from '@supabase/supabase-js'
+// ... resto do código
 
 // 1. Criar cliente do Supabase (Server-side)
 const supabase = createClient(
