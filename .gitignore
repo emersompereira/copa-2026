@@ -1,5 +1,14 @@
-# Ambiente virtual
+# Python
 .venv/
+__pycache__/
+*.pyc
 
-# Arquivos de configuração sensíveis
+# Node/Next.js
+node_modules/
+.next/
+package-lock.json
+
+# Arquivos sensíveis
 .env
+.env.local
+
