@@ -1,14 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
-export const dynamic = 'force-dynamic' // Adicione isso aqui!
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@supabase/supabase-js'
-// ... resto do código
 
 // 1. Criar cliente do Supabase (Server-side)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+// ... restante do código (tipos e função Home)
 
 // 2. Definir o tipo (TypeScript agradece)
 type Jogo = {
