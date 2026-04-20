@@ -17,27 +17,20 @@ def main():
     
     print("🔌 Conectado ao Supabase...")
 
-    # 2. Massa de dados (Mock dos jogos da Copa 2026 - Grupo fictício)
-    # No futuro, substituiremos isso por um requests.get('api-futebol.com/fixtures')
+    # 2. Massa de dados (Primeira fase da Copa 2026)
     jogos = [
-        {
-            "time_a": "Brasil",
-            "time_b": "Croácia",
-            "data_hora": "2026-06-12T17:00:00-03:00",
-            "status": "agendado"
-        },
-        {
-            "time_a": "França",
-            "time_b": "Alemanha",
-            "data_hora": "2026-06-13T16:00:00-03:00",
-            "status": "agendado"
-        },
-        {
-            "time_a": "Argentina",
-            "time_b": "Espanha",
-            "data_hora": "2026-06-14T20:00:00-03:00",
-            "status": "agendado"
-        }
+        # GRUPO A (México/EUA/Canadá e outros)
+        {"time_a": "México", "time_b": "África do Sul", "data_hora": "2026-06-11T15:00:00-06:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Canadá", "time_b": "Nova Zelândia", "data_hora": "2026-06-12T17:00:00-07:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Estados Unidos", "time_b": "Colômbia", "data_hora": "2026-06-12T19:00:00-04:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        
+        # GRUPO B & C
+        {"time_a": "Brasil", "time_b": "Croácia", "data_hora": "2026-06-13T16:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Espanha", "time_b": "Holanda", "data_hora": "2026-06-13T20:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Argentina", "time_b": "Marrocos", "data_hora": "2026-06-14T13:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "França", "time_b": "Japão", "data_hora": "2026-06-14T17:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Inglaterra", "time_b": "Equador", "data_hora": "2026-06-15T15:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
+        {"time_a": "Portugal", "time_b": "Coreia do Sul", "data_hora": "2026-06-15T19:00:00-03:00", "status": "agendado", "gols_a": None, "gols_b": None},
     ]
 
     print(f"🚀 Iniciando ingestão de {len(jogos)} jogos...")
@@ -60,3 +53,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+    
