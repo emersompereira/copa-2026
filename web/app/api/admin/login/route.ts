@@ -8,6 +8,14 @@ export async function POST(request: NextRequest) {
     const adminPassword = process.env.ADMIN_PASSWORD
     const adminSecret = process.env.ADMIN_SECRET
 
+    // Validar se as credenciais estão configuradas
+    if (!adminUsername || !adminPassword || !adminSecret) {
+      return NextResponse.json(
+        { message: 'Configuração de admin incompleta' },
+        { status: 500 }
+      )
+    }
+
     // Validar credenciais
     if (username === adminUsername && password === adminPassword) {
       const response = NextResponse.json({ success: true, message: 'Login bem-sucedido' })
