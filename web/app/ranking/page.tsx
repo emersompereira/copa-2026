@@ -31,7 +31,7 @@ export default function Ranking() {
                         {lista.map((item, index) => (
                             <tr key={item.user_id} className="hover:bg-gray-750 transition-colors">
                                 <td className="px-6 py-4 font-mono text-yellow-500">{index + 1}º</td>
-                                <td className="px-6 py-4 text-sm">{item.user_email.split('@')[0]}</td>
+                                <td className="px-6 py-4 text-sm">{item.user_email ? item.user_email.split('@')[0] : 'Usuário'}</td>
                                 <td className="px-6 py-4 text-right font-bold text-xl">{item.total_pontos}</td>
                             </tr>
                         ))}
