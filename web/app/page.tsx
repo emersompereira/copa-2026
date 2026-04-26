@@ -163,13 +163,22 @@ export default function Home() {
                             <span className="text-xs font-black uppercase flex-1 text-right">{jogo.time_a}</span>
                             <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
                             <input 
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
                               value={palpites[jogo.id]?.gA ?? ''}
                               onChange={(e) => {
-                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: parseInt(e.target.value) || 0 }})
+                                const value = e.target.value.replace(/[^0-9]/g, '')
+                                const numVal = value ? Math.min(99, parseInt(value)) : ''
+                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: numVal === '' ? undefined : numVal }})
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === '') {
+                                  setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: undefined }})
+                                }
                               }}
                               placeholder="0"
+                              maxLength={2}
                             />
                           </div>
 
@@ -177,13 +186,22 @@ export default function Home() {
 
                           <div className="flex items-center gap-3 w-full">
                             <input 
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
                               value={palpites[jogo.id]?.gB ?? ''}
                               onChange={(e) => {
-                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: parseInt(e.target.value) || 0 }})
+                                const value = e.target.value.replace(/[^0-9]/g, '')
+                                const numVal = value ? Math.min(99, parseInt(value)) : ''
+                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: numVal === '' ? undefined : numVal }})
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === '') {
+                                  setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: undefined }})
+                                }
                               }}
                               placeholder="0"
+                              maxLength={2}
                             />
                             <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
                             <span className="text-xs font-black uppercase flex-1">{jogo.time_b}</span>
