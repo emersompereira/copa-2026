@@ -1,218 +1,157 @@
 'use client'
-
 import { createClient } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
-import Login from './login'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-type Jogo = {
-  id: number
-  time_a: string
-  time_b: string
-  data_hora: string
-  status: string
-  gols_a: number | null
-  gols_b: number | null
-}
-
-type PalpiteMapa = Record<number, { gols_a: number; gols_b: number }>
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export default function Home() {
+  const [jogos, setJogos] = useState<any[]>([])
+  const [palpites, setPalpites] = useState<any>({})
   const [user, setUser] = useState<any>(null)
-  const [jogos, setJogos] = useState<Jogo[]>([])
-  const [palpites, setPalpites] = useState<PalpiteMapa>({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [rodadasAtuais, setRodadasAtuais] = useState<{ [key: string]: number }>({})
 
   useEffect(() => {
-    const inicializarSistema = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      const { data: partidasData } = await supabase
-        .from('partidas')
-        .select('*')
-        .order('data_hora', { ascending: true })
-      
-      if (partidasData) setJogos(partidasData)
-
-      if (user) {
-        const { data: palpitesData } = await supabase
-          .from('palpites')
-          .select('*')
-          .eq('user_id', user.id)
-
-        if (palpitesData) {
-          const mapa: PalpiteMapa = {}
-          palpitesData.forEach(p => {
-            mapa[p.partida_id] = { gols_a: p.gols_a, gols_b: p.gols_b }
-          })
-          setPalpites(mapa)
-        }
-      }
-      setLoading(false)
-    }
-
-    inicializarSistema()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const carregarDados = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
-      if (event === 'SIGNED_OUT') setPalpites({})
-    })
 
-    return () => authListener.subscription.unsubscribe()
+      const { data: matches } = await supabase.from('partidas').select('*').order('data_hora')
+      if (matches) {
+        setJogos(matches)
+        // Inicializa cada grupo na rodada 1
+        const gruposUnicos = Array.from(new Set(matches.map(j => j.grupo)))
+        const inicial: any = {}
+        gruposUnicos.forEach(g => inicial[g as string] = 1)
+        setRodadasAtuais(inicial)
+      }
+
+      if (session?.user) {
+        const { data: bets } = await supabase.from('palpites').select('*').eq('user_id', session.user.id)
+        const betsObj: any = {}
+        bets?.forEach(b => betsObj[b.partida_id] = { gA: b.gols_a, gB: b.gols_b })
+        setPalpites(betsObj)
+      }
+    }
+    carregarDados()
   }, [])
 
-  const handleInputChange = (partidaId: number, time: 'a' | 'b', valor: string) => {
-    const num = valor === '' ? 0 : parseInt(valor)
-    setPalpites(prev => ({
-      ...prev,
-      [partidaId]: {
-        ...(prev[partidaId] || { gols_a: 0, gols_b: 0 }),
-        [time === 'a' ? 'gols_a' : 'gols_b']: num
-      }
-    }))
-  }
-
-  const salvarPalpites = async () => {
-    if (!user) return
-    setSaving(true)
-
-    const dadosParaSalvar = Object.entries(palpites).map(([partidaId, scores]) => ({
+  const salvarPalpite = async (partidaId: number) => {
+    if (!user) return alert("Faça login para salvar!")
+    const p = palpites[partidaId]
+    const { error } = await supabase.from('palpites').upsert({
       user_id: user.id,
-      partida_id: parseInt(partidaId),
-      gols_a: scores.gols_a,
-      gols_b: scores.gols_b
-    }))
-
-    const { error } = await supabase
-      .from('palpites')
-      .upsert(dadosParaSalvar, { onConflict: 'user_id,partida_id' })
+      partida_id: partidaId,
+      gols_a: p.gA,
+      gols_b: p.gB,
+      user_email: user.email
+    }, { onConflict: 'user_id,partida_id' })
 
     if (error) alert("Erro ao salvar: " + error.message)
-    else alert("✅ Palpites salvos e sincronizados com sucesso!")
-    
-    setSaving(false)
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center font-mono uppercase tracking-tighter">
-      [SRE]: Sincronizando Banco de Dados...
-    </div>
-  )
+  const formatarData = (iso: string) => {
+    const d = new Date(iso)
+    const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    const semana = d.toLocaleDateString('pt-BR', { weekday: 'long' }).split('-')[0]
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    return { dia, semana, hora }
+  }
+
+  // Agrupar jogos por Grupo
+  const grupos = jogos.reduce((acc: any, jogo) => {
+    if (!acc[jogo.grupo]) acc[jogo.grupo] = []
+    acc[jogo.grupo].push(jogo)
+    return acc
+  }, {})
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-4 md:p-8">
-      <header className="max-w-4xl mx-auto mb-12 flex flex-col items-center">
-        <h1 className="text-5xl font-black text-yellow-500 italic uppercase tracking-tighter mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">
-          Copa 2026
-        </h1>
-
-        <nav className="flex gap-8 mb-8 border-b border-gray-800 pb-2 w-full justify-center">
-          <a href="/" className="text-yellow-500 font-bold uppercase text-xs tracking-[0.2em] border-b-2 border-yellow-500 pb-2">
-            Meus Palpites
-          </a>
-          <a href="/ranking" className="text-gray-500 hover:text-white font-bold uppercase text-xs tracking-[0.2em] transition-all">
-            Ranking Geral
-          </a>
-        </nav>
-
-        {user && (
-          <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 px-4 py-2 rounded-full shadow-inner">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">{user.email}</span>
-            <button 
-              onClick={() => supabase.auth.signOut()} 
-              className="text-[10px] text-red-500 font-black hover:text-red-400 ml-2"
-            >
-              [ SAIR ]
-            </button>
-          </div>
-        )}
+    <main className="min-h-screen bg-black text-white p-4 font-sans">
+      <header className="max-w-6xl mx-auto flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-black italic text-yellow-500 uppercase">Bolão 2026</h1>
+        <div className="flex gap-4">
+          <a href="/ranking" className="text-xs font-bold uppercase tracking-widest hover:text-yellow-500 transition">Ranking</a>
+          {user ? <span className="text-[10px] text-gray-500">{user.email}</span> : <a href="/login" className="bg-yellow-500 text-black px-4 py-1 rounded-full font-bold text-xs">Login</a>}
+        </div>
       </header>
 
-      {!user ? (
-        <div className="max-w-md mx-auto">
-          <Login />
-        </div>
-      ) : (
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div className="flex justify-between items-center px-2">
-            <h2 className="text-gray-400 text-xs font-black uppercase tracking-widest">Tabela de Apostas</h2>
-            <span className="text-[10px] text-gray-600 font-mono">ID: {user.id.slice(0,8)}</span>
-          </div>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {Object.keys(grupos).sort().map(nomeGrupo => {
+          const rodadaAtiva = rodadasAtuais[nomeGrupo] || 1
+          const jogosDaRodada = grupos[nomeGrupo].filter((j: any) => j.rodada === rodadaAtiva)
 
-          <div className="grid gap-3">
-            {jogos.map((jogo) => {
-              // Regra: Se o jogo já tem placar oficial, bloqueia os inputs
-              const isEncerrado = jogo.gols_a !== null && jogo.gols_b !== null;
-
-              return (
-                <div 
-                  key={jogo.id} 
-                  className={`border p-5 rounded-2xl flex items-center justify-between transition-all group ${
-                    isEncerrado ? 'bg-gray-900/20 border-gray-900 opacity-60' : 'bg-gray-900/50 border-gray-800 hover:border-gray-600'
-                  }`}
-                >
-                  <div className="w-1/3 text-right">
-                    <p className={`font-black text-sm md:text-base uppercase ${isEncerrado ? 'text-gray-600' : 'group-hover:text-yellow-500 transition-colors'}`}>
-                      {jogo.time_a}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={palpites[jogo.id]?.gols_a ?? ''}
-                      onChange={(e) => handleInputChange(jogo.id, 'a', e.target.value)}
-                      disabled={isEncerrado}
-                      className="w-12 h-12 md:w-14 md:h-14 bg-black border-2 border-gray-800 rounded-xl text-center text-xl font-black focus:border-yellow-500 focus:ring-1 outline-none transition-all disabled:text-gray-600 disabled:bg-gray-950 disabled:cursor-not-allowed"
-                    />
-                    <span className="text-gray-700 font-black text-xs italic">VS</span>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={palpites[jogo.id]?.gols_b ?? ''}
-                      onChange={(e) => handleInputChange(jogo.id, 'b', e.target.value)}
-                      disabled={isEncerrado}
-                      className="w-12 h-12 md:w-14 md:h-14 bg-black border-2 border-gray-800 rounded-xl text-center text-xl font-black focus:border-yellow-500 focus:ring-1 outline-none transition-all disabled:text-gray-600 disabled:bg-gray-950 disabled:cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div className="w-1/3 text-left">
-                    <p className={`font-black text-sm md:text-base uppercase ${isEncerrado ? 'text-gray-600' : 'group-hover:text-yellow-500 transition-colors'}`}>
-                      {jogo.time_b}
-                    </p>
-                  </div>
+          return (
+            <div key={nomeGrupo} className="bg-[#121212] rounded-3xl border border-gray-800 overflow-hidden shadow-2xl">
+              {/* Header do Grupo */}
+              <div className="bg-gradient-to-r from-gray-900 to-black p-4 border-b border-gray-800">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-black uppercase text-gray-400">Grupo {nomeGrupo}</h2>
                 </div>
-              )
-            })}
-          </div>
+                
+                {/* Navegador de Rodadas */}
+                <div className="flex justify-between items-center bg-black/50 rounded-lg p-2">
+                  <button 
+                    onClick={() => setRodadasAtuais(prev => ({...prev, [nomeGrupo]: Math.max(1, rodadaAtiva - 1)}))}
+                    className="p-1 hover:text-yellow-500 transition"
+                  > ◀ </button>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-yellow-500">{rodadaAtiva}ª RODADA</span>
+                  <button 
+                    onClick={() => setRodadasAtuais(prev => ({...prev, [nomeGrupo]: Math.min(3, rodadaAtiva + 1)}))}
+                    className="p-1 hover:text-yellow-500 transition"
+                  > ▶ </button>
+                </div>
+              </div>
 
-          <button 
-            onClick={salvarPalpites}
-            disabled={saving || Object.keys(palpites).length === 0}
-            className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-[0.98] ${
-              saving 
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
-                : 'bg-yellow-500 hover:bg-yellow-400 text-black shadow-yellow-500/10'
-            }`}
-          >
-            {saving ? 'Gravando Dados...' : 'Salvar Palpites'}
-          </button>
-        </div>
-      )}
+              {/* Lista de Jogos */}
+              <div className="divide-y divide-gray-800">
+                {jogosDaRodada.map((jogo: any) => {
+                  const { dia, semana, hora } = formatarData(jogo.data_hora)
+                  return (
+                    <div key={jogo.id} className="p-6 space-y-4 hover:bg-white/[0.02] transition">
+                      {/* Info do Jogo */}
+                      <div className="text-center text-[10px] text-gray-500 uppercase tracking-tighter">
+                        <span className="font-bold text-gray-400">{jogo.estadio}</span> • {dia} • {semana} • {hora}
+                      </div>
 
-      <footer className="mt-20 text-center opacity-20">
-        <p className="text-[10px] font-mono tracking-[0.5em] uppercase">
-          Bolão Copa 2026 • Sistema de Alta Disponibilidade
-        </p>
-      </footer>
+                      {/* Placar */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 w-full">
+                          <span className="text-xs font-black uppercase flex-1 text-right">{jogo.time_a}</span>
+                          <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                          <input 
+                            type="number"
+                            className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                            value={palpites[jogo.id]?.gA ?? ''}
+                            onChange={(e) => {
+                              setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: parseInt(e.target.value) }})
+                            }}
+                            onBlur={() => salvarPalpite(jogo.id)}
+                          />
+                        </div>
+
+                        <span className="text-gray-700 font-black">X</span>
+
+                        <div className="flex items-center gap-3 w-full">
+                          <input 
+                            type="number"
+                            className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                            value={palpites[jogo.id]?.gB ?? ''}
+                            onChange={(e) => {
+                              setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: parseInt(e.target.value) }})
+                            }}
+                            onBlur={() => salvarPalpite(jogo.id)}
+                          />
+                          <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                          <span className="text-xs font-black uppercase flex-1">{jogo.time_b}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </main>
   )
 }
