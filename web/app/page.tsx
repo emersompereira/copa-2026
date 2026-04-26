@@ -9,6 +9,8 @@ export default function Home() {
   const [palpites, setPalpites] = useState<any>({})
   const [user, setUser] = useState<any>(null)
   const [rodadasAtuais, setRodadasAtuais] = useState<{ [key: string]: number }>({})
+  const [salvando, setSalvando] = useState(false)
+  const [mensagem, setMensagem] = useState<string>('')
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -35,18 +37,42 @@ export default function Home() {
     carregarDados()
   }, [])
 
-  const salvarPalpite = async (partidaId: number) => {
-    if (!user) return alert("Faça login para salvar!")
-    const p = palpites[partidaId]
-    const { error } = await supabase.from('palpites').upsert({
-      user_id: user.id,
-      partida_id: partidaId,
-      gols_a: p.gA,
-      gols_b: p.gB,
-      user_email: user.email
-    }, { onConflict: 'user_id,partida_id' })
+  const salvarTodosPalpites = async () => {
+    if (!user) return setMensagem("❌ Faça login para salvar!")
+    
+    const palpitesParaSalvar = Object.entries(palpites).filter(([_, p]: [string, any]) => p?.gA !== undefined && p?.gB !== undefined)
+    
+    if (palpitesParaSalvar.length === 0) {
+      return setMensagem("❌ Nenhum palpite preenchido para salvar!")
+    }
 
-    if (error) alert("Erro ao salvar: " + error.message)
+    setSalvando(true)
+    
+    try {
+      const promessas = palpitesParaSalvar.map(([partidaId, p]: [string, any]) => 
+        supabase.from('palpites').upsert({
+          user_id: user.id,
+          partida_id: parseInt(partidaId),
+          gols_a: p.gA,
+          gols_b: p.gB
+        }, { onConflict: 'user_id,partida_id' })
+      )
+      
+      const resultados = await Promise.all(promessas)
+      const temErro = resultados.some(r => r.error)
+      
+      setSalvando(false)
+      
+      if (temErro) {
+        setMensagem(`❌ Erro ao salvar alguns palpites`)
+      } else {
+        setMensagem(`✅ ${palpitesParaSalvar.length} palpite(s) salvo(s) com sucesso!`)
+        setTimeout(() => setMensagem(''), 4000)
+      }
+    } catch (err) {
+      setSalvando(false)
+      setMensagem("❌ Erro ao salvar: " + (err as any).message)
+    }
   }
 
   const formatarData = (iso: string) => {
@@ -73,7 +99,25 @@ export default function Home() {
           {user ? <span className="text-[10px] text-gray-500">{user.email}</span> : <a href="/login" className="bg-yellow-500 text-black px-4 py-1 rounded-full font-bold text-xs">Login</a>}
         </div>
       </header>
+      {/* Feedback de Salvamento */}
+      {mensagem && (
+        <div className="max-w-6xl mx-auto mb-4 p-3 rounded-lg text-center font-bold text-sm" style={{backgroundColor: mensagem.includes('✅') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: mensagem.includes('✅') ? '#22c55e' : '#ef4444'}}>
+          {mensagem}
+        </div>
+      )}
 
+      {/* Botão de Salvar Global */}
+      {user && Object.keys(palpites).length > 0 && (
+        <div className="max-w-6xl mx-auto mb-8 flex justify-center">
+          <button
+            onClick={salvarTodosPalpites}
+            disabled={salvando}
+            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-black font-black py-3 px-8 rounded-xl transition-all text-sm uppercase tracking-widest shadow-lg"
+          >
+            {salvando ? '💾 SALVANDO...' : '💾 SALVAR TODOS OS PALPITES'}
+          </button>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {Object.keys(grupos).sort().map(nomeGrupo => {
           const rodadaAtiva = rodadasAtuais[nomeGrupo] || 1
@@ -113,35 +157,37 @@ export default function Home() {
                       </div>
 
                       {/* Placar */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3 w-full">
-                          <span className="text-xs font-black uppercase flex-1 text-right">{jogo.time_a}</span>
-                          <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
-                          <input 
-                            type="number"
-                            className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
-                            value={palpites[jogo.id]?.gA ?? ''}
-                            onChange={(e) => {
-                              setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: parseInt(e.target.value) }})
-                            }}
-                            onBlur={() => salvarPalpite(jogo.id)}
-                          />
-                        </div>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 w-full">
+                            <span className="text-xs font-black uppercase flex-1 text-right">{jogo.time_a}</span>
+                            <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                            <input 
+                              type="number"
+                              className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                              value={palpites[jogo.id]?.gA ?? ''}
+                              onChange={(e) => {
+                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: parseInt(e.target.value) || 0 }})
+                              }}
+                              placeholder="0"
+                            />
+                          </div>
 
-                        <span className="text-gray-700 font-black">X</span>
+                          <span className="text-gray-700 font-black">X</span>
 
-                        <div className="flex items-center gap-3 w-full">
-                          <input 
-                            type="number"
-                            className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
-                            value={palpites[jogo.id]?.gB ?? ''}
-                            onChange={(e) => {
-                              setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: parseInt(e.target.value) }})
-                            }}
-                            onBlur={() => salvarPalpite(jogo.id)}
-                          />
-                          <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
-                          <span className="text-xs font-black uppercase flex-1">{jogo.time_b}</span>
+                          <div className="flex items-center gap-3 w-full">
+                            <input 
+                              type="number"
+                              className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                              value={palpites[jogo.id]?.gB ?? ''}
+                              onChange={(e) => {
+                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: parseInt(e.target.value) || 0 }})
+                              }}
+                              placeholder="0"
+                            />
+                            <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                            <span className="text-xs font-black uppercase flex-1">{jogo.time_b}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
