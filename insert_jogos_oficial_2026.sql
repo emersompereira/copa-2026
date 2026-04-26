@@ -1,13 +1,13 @@
 -- Apaga jogos antigos e recria com grupos oficiais da Copa 2026
 DELETE FROM partidas;
 
--- GRUPO A: México, África do Sul, Coreia do Sul, República Checa
+-- GRUPO A: México, África do Sul, Coreia do Sul, República Tcheca
 INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('México', 'MX', 'África do Sul', 'ZA', 'A', 1, 'Azteca', '2026-06-11T16:00:00Z');
-INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('Coreia do Sul', 'KR', 'República Checa', 'CZ', 'A', 1, 'Akron', '2026-06-11T23:00:00Z');
+INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('Coreia do Sul', 'KR', 'República Tcheca', 'CZ', 'A', 1, 'Akron', '2026-06-11T23:00:00Z');
 INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('México', 'MX', 'Coreia do Sul', 'KR', 'A', 2, 'Azteca', '2026-06-15T18:00:00Z');
-INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('República Checa', 'CZ', 'África do Sul', 'ZA', 'A', 2, 'Arrowhead', '2026-06-15T21:00:00Z');
+INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('República Tcheca', 'CZ', 'África do Sul', 'ZA', 'A', 2, 'Arrowhead', '2026-06-15T21:00:00Z');
 INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('África do Sul', 'ZA', 'Coreia do Sul', 'KR', 'A', 3, 'MetLife', '2026-06-24T18:00:00Z');
-INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('República Checa', 'CZ', 'México', 'MX', 'A', 3, 'SoFi Stadium', '2026-06-24T21:00:00Z');
+INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('República Tcheca', 'CZ', 'México', 'MX', 'A', 3, 'SoFi Stadium', '2026-06-24T21:00:00Z');
 
 -- GRUPO B: Canadá, Bósnia e Herzegovina, Qatar, Suíça
 INSERT INTO partidas (time_a, sigla_a, time_b, sigla_b, grupo, rodada, estadio, data_hora) VALUES ('Canadá', 'CA', 'Bósnia e Herzegovina', 'BA', 'B', 1, 'BMO Field', '2026-06-12T15:00:00Z');

@@ -69,7 +69,7 @@ export default function Admin() {
             <header className="max-w-2xl mx-auto mb-12 border-b border-red-900 pb-4 flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-black text-red-600 italic uppercase tracking-tighter">
-                        Terminal do Comissário
+                        Terminal do Administrador
                     </h1>
                     <p className="text-[10px] font-mono text-gray-500 mt-2 uppercase tracking-[0.3em]">
                         Controle de Resultados Oficiais • Copa 2026
