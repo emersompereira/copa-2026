@@ -83,6 +83,38 @@ export default function Home() {
     return { dia, semana, hora }
   }
 
+  const verificarStatusJogo = (jogo: any) => {
+    const agora = new Date()
+    const dataPartida = new Date(jogo.data_hora)
+    const minutosFaltando = (dataPartida.getTime() - agora.getTime()) / (1000 * 60)
+
+    // Jogo já encerrado
+    if (jogo.status === 'encerrado') {
+      return { bloqueado: true, motivo: 'encerrado' }
+    }
+
+    // Faltam menos de 30 minutos para começar
+    if (minutosFaltando <= 30 && minutosFaltando > 0) {
+      return { bloqueado: true, motivo: 'proximo' }
+    }
+
+    // Jogo já começou 
+    if (minutosFaltando <= 0) {
+      return { bloqueado: true, motivo: 'em-andamento' }
+    }
+
+    return { bloqueado: false, motivo: null }
+  }
+
+  const getMensagemBloqueio = (motivo: string) => {
+    const msgs: { [key: string]: string } = {
+      'encerrado': '🔒 Jogo encerrado',
+      'proximo': '🔒 Jogo iniciando em breve',
+      'em-andamento': '🔒 Jogo em andamento'
+    }
+    return msgs[motivo] || '🔒 Bloqueado'
+  }
+
   // Agrupar jogos por Grupo
   const grupos = jogos.reduce((acc: any, jogo) => {
     if (!acc[jogo.grupo]) acc[jogo.grupo] = []
@@ -149,6 +181,7 @@ export default function Home() {
               <div className="divide-y divide-gray-800">
                 {jogosDaRodada.map((jogo: any) => {
                   const { dia, semana, hora } = formatarData(jogo.data_hora)
+                  const { bloqueado, motivo } = verificarStatusJogo(jogo)
                   return (
                     <div key={jogo.id} className="p-6 space-y-4 hover:bg-white/[0.02] transition">
                       {/* Info do Jogo */}
@@ -156,21 +189,36 @@ export default function Home() {
                         <span className="font-bold text-gray-400">{jogo.estadio}</span> • {dia} • {semana} • {hora}
                       </div>
 
-                      {/* Placar */}
+                        {/* Placar */}
                       <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3 w-full">
-                            <span className="text-xs font-black uppercase flex-1 text-right">{jogo.time_a}</span>
-                            <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                        {/* Container principal dividido em 3 partes: Time A (flex-1) | Placar (shrink-0) | Time B (flex-1) */}
+                        <div className="flex items-center justify-between w-full gap-2">
+                          
+                          {/* Time A + Flag A */}
+                          <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+                            <span className="text-[10px] sm:text-xs font-black uppercase text-right leading-tight">{jogo.time_a}</span>
+                            <img src={`https://flagcdn.com/w40/${jogo.sigla_a.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm shrink-0" alt="" />
+                          </div>
+
+                          {/* Bloco Central: Inputs e Placar Oficial */}
+                          <div className="flex items-center justify-center gap-1 sm:gap-2 shrink-0">
+                            {/* Input A */}
                             <input 
                               type="text"
                               inputMode="numeric"
-                              className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                              disabled={bloqueado}
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl text-center font-black text-lg sm:text-xl placeholder-gray-600 outline-none transition-all shrink-0 ${
+                                bloqueado 
+                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed border border-red-900/30' 
+                                : 'bg-gray-800 text-white focus:ring-2 ring-yellow-500'
+                              }`}
                               value={palpites[jogo.id]?.gA ?? ''}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9]/g, '')
-                                const numVal = value ? Math.min(99, parseInt(value)) : ''
-                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: numVal === '' ? undefined : numVal }})
+                                if (!bloqueado) {
+                                  const value = e.target.value.replace(/[^0-9]/g, '')
+                                  const numVal = value ? Math.min(99, parseInt(value)) : ''
+                                  setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gA: numVal === '' ? undefined : numVal }})
+                                }
                               }}
                               onBlur={(e) => {
                                 if (e.target.value === '') {
@@ -180,20 +228,37 @@ export default function Home() {
                               placeholder="0"
                               maxLength={2}
                             />
-                          </div>
 
-                          <span className="text-gray-700 font-black">X</span>
+                            {/* Placar Oficial A */}
+                            {bloqueado && jogo.status === 'encerrado' && jogo.gols_a !== null && jogo.gols_a !== undefined && (
+                              <span className="text-xs sm:text-sm font-black text-yellow-500 shrink-0">{jogo.gols_a}</span>
+                            )}
 
-                          <div className="flex items-center gap-3 w-full">
+                            {/* Separador X */}
+                            <span className="text-gray-700 font-black text-sm sm:text-lg shrink-0 mx-1">X</span>
+
+                            {/* Placar Oficial B */}
+                            {bloqueado && jogo.status === 'encerrado' && jogo.gols_b !== null && jogo.gols_b !== undefined && (
+                              <span className="text-xs sm:text-sm font-black text-yellow-500 shrink-0">{jogo.gols_b}</span>
+                            )}
+
+                            {/* Input B */}
                             <input 
                               type="text"
                               inputMode="numeric"
-                              className="w-12 h-12 bg-gray-800 rounded-xl text-center font-black text-xl focus:ring-2 ring-yellow-500 outline-none"
+                              disabled={bloqueado}
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl text-center font-black text-lg sm:text-xl placeholder-gray-600 outline-none transition-all shrink-0 ${
+                                bloqueado 
+                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed border border-red-900/30' 
+                                : 'bg-gray-800 text-white focus:ring-2 ring-yellow-500'
+                              }`}
                               value={palpites[jogo.id]?.gB ?? ''}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9]/g, '')
-                                const numVal = value ? Math.min(99, parseInt(value)) : ''
-                                setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: numVal === '' ? undefined : numVal }})
+                                if (!bloqueado) {
+                                  const value = e.target.value.replace(/[^0-9]/g, '')
+                                  const numVal = value ? Math.min(99, parseInt(value)) : ''
+                                  setPalpites({...palpites, [jogo.id]: { ...palpites[jogo.id], gB: numVal === '' ? undefined : numVal }})
+                                }
                               }}
                               onBlur={(e) => {
                                 if (e.target.value === '') {
@@ -203,10 +268,24 @@ export default function Home() {
                               placeholder="0"
                               maxLength={2}
                             />
-                            <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
-                            <span className="text-xs font-black uppercase flex-1">{jogo.time_b}</span>
+                          </div>
+
+                          {/* Flag B + Time B */}
+                          <div className="flex items-center justify-start gap-2 flex-1 min-w-0">
+                            <img src={`https://flagcdn.com/w40/${jogo.sigla_b.toLowerCase()}.png`} className="w-6 h-4 object-cover rounded-sm shadow-sm shrink-0" alt="" />
+                            <span className="text-[10px] sm:text-xs font-black uppercase text-left leading-tight">{jogo.time_b}</span>
                           </div>
                         </div>
+
+                        {/* Status do Jogo */}
+                        {bloqueado && (
+                          <div className="text-center text-xs font-bold rounded-lg py-2 px-3" style={{
+                            backgroundColor: jogo.status === 'encerrado' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: jogo.status === 'encerrado' ? '#ef4444' : '#f59e0b'
+                          }}>
+                            {getMensagemBloqueio(motivo || '')}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
